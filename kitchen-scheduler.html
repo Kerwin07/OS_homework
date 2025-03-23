@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>厨房任务调度模拟</title>
+    <style>
+        canvas { border: 1px solid #ccc; }
+        body { display: flex; flex-direction: column; align-items: center; }
+    </style>
+</head>
+<body>
+    <h2>厨房任务调度模拟 (Round Robin)</h2>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 颜色定义
+        const colors = {
+            background: '#FAFAFA',
+            black: '#000000',
+            green: '#00C800',
+            red: '#C80000',
+            blue: '#0000C8',
+            gray: '#C8C8C8'
+        };
+
+        // 任务配置
+        const tasks = [
+            { name: "切菜 (Chop Vegetables)", totalTime: 5, remainingTime: 5, x: 50, y: 100, completed: false },
+            { name: "烧水 (Boil Water)", totalTime: 7, remainingTime: 7, x: 50, y: 200, completed: false },
+            { name: "烤面包 (Toast Bread)", totalTime: 4, remainingTime: 4, x: 50, y: 300, completed: false },
+            { name: "煎蛋 (Fry Egg)", totalTime: 6, remainingTime: 6, x: 50, y: 400, completed: false },
+            { name: "烤蛋糕 (Bake Cake)", totalTime: 10, remainingTime: 10, x: 50, y: 500, completed: false }
+        ];
+
+        // 调度参数
+        const TIME_QUANTUM = 1; // 时间片长度（秒）
+        let taskIndex = 0;
+        let lastSwitchTime = Date.now() / 1000;
+        let chefX = 500;
+        let animationId = null;
+
+        // 绘制任务进度条
+        function drawTask(task, isRunning = false) {
+            const progressWidth = 200 * (1 - task.remainingTime / task.totalTime);
+            
+            // 绘制任务名称
+            ctx.fillStyle = colors.black;
+            ctx.font = "16px Arial";
+            ctx.fillText(task.name, task.x, task.y - 25);
+            
+            // 绘制进度条背景
+            ctx.fillStyle = colors.gray;
+            ctx.fillRect(task.x, task.y, 200, 30);
+            
+            // 绘制进度条
+            ctx.fillStyle = colors.green;
+            ctx.fillRect(task.x, task.y, progressWidth, 30);
+            
+            // 绘制边框
+            ctx.strokeStyle = colors.black;
+            ctx.strokeRect(task.x, task.y, 200, 30);
+            
+            // 绘制高亮边框
+            if (isRunning) {
+                ctx.strokeStyle = colors.blue;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(task.x - 3, task.y - 3, 206, 36);
+                ctx.lineWidth = 1;
+            }
+        }
+
+        // 更新任务状态
+        function updateTasks() {
+            const currentTime = Date.now() / 1000;
+            
+            // 检查所有任务是否完成
+            if (tasks.every(t => t.completed)) {
+                ctx.fillStyle = colors.black;
+                ctx.font = "36px Arial";
+                ctx.fillText("所有厨房任务已完成！", 200, 300);
+                cancelAnimationFrame(animationId);
+                return;
+            }
+
+            // 轮转调度
+            if (currentTime - lastSwitchTime >= TIME_QUANTUM) {
+                const currentTask = tasks[taskIndex];
+                if (!currentTask.completed) {
+                    currentTask.remainingTime = Math.max(0, currentTask.remainingTime - TIME_QUANTUM);
+                    if (currentTask.remainingTime <= 0) {
+                        currentTask.completed = true;
+                    }
+                    lastSwitchTime = currentTime;
+                }
+
+                // 寻找下一个未完成任务
+                let originalIndex = taskIndex;
+                let found = false;
+                do {
+                    taskIndex = (taskIndex + 1) % tasks.length;
+                    if (!tasks[taskIndex].completed) {
+                        found = true;
+                        break;
+                    }
+                } while (taskIndex !== originalIndex);
+            }
+
+            // 绘制背景
+            ctx.fillStyle = colors.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制所有任务
+            tasks.forEach((task, i) => drawTask(task, i === taskIndex));
+
+            // 绘制厨师动画
+            chefX = 500 + 20 * Math.sin(currentTime * 2);
+            ctx.fillStyle = colors.red;
+            ctx.beginPath();
+            ctx.arc(chefX, 100, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = colors.red;
+            ctx.font = "16px Arial";
+            ctx.fillText("厨师 (Chef) 正在调度任务...", 400, 50);
+
+            animationId = requestAnimationFrame(updateTasks);
+        }
+
+        // 启动动画
+        updateTasks();
+    </script>
+</body>
+</html>
